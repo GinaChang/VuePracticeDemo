@@ -21,7 +21,8 @@
         <div class="row">
           <div class="col-sm-8 col-md-7 py-4">
             <h4 class="text-white">About</h4>
-            <p class="text-muted">用來練習Vue框架與Firebase的Demo小網站，排版也嘗試用boostrap範本修改後完成。本來想要加上圖片的，但是資料庫內儲存Base64字串過於龐大，又不想使用到Storage，因此作罷。</p>
+            <p class="text-muted">用來練習Vue框架、Firebase、boostrap排版的Demo。</p>
+            <p class="text-muted">本來想要加上圖片的，但是資料庫內儲存Base64字串過於龐大，又不想使用到Storage，因此作罷。</p>
           </div>
           <div class="col-sm-4 offset-md-1 py-4">
             <h4 class="text-white">Contact</h4>
@@ -56,22 +57,25 @@
       <div class="container">
         <div class="text-center">
           <h1 class="jumbotron-heading">簡易留言Demo</h1>
-          <p class="lead text-muted text-left py-3">使用boostrap排版、Vue.js來控制元素的增減。資料庫使用Firebase Database，增刪留言時同步對Database寫入及刪除。</p>
-          <p class="lead text-muted text-left py-3">新個一個留言吧，他會立刻出現在下方哦 !</p>        
+          <ul class="py-2">
+            <li class="text-muted text-left py-1">使用boostrap排版。</li>
+            <li class="text-muted text-left py-1"> Vue.js來控制元素的增減。</li>
+            <li class="text-muted text-left py-1">資料庫使用Firebase Database，增刪留言時同步對Database寫入及刪除。</li>
+          </ul>
         </div>
-        
-        <form id="inputarea" class="px-4 py-4 rounded bg-light border border-secondary">
+
+        <form id="inputarea" class="px-4 py-4 rounded bg-light border border-secondary" v-on:submit.prevent="submitpost">
           <div class="form-group ">
             <label class="text-left" for="comment">標題</label>
-            <input v-model="newtitle" type="text" class="form-control" placeholder="請輸入標題">
+            <input v-model="newtitle" type="text" class="form-control" placeholder="請輸入標題" required>
           </div>
           <div class="form-group">
             <label class="text-left" for="comment">留言內容</label>
-            <textarea v-model="newcontent" class="form-control" rows="5" placeholder="請輸入留言內容"></textarea>
+            <textarea v-model="newcontent" class="form-control" rows="5" placeholder="請輸入留言內容" required></textarea>
           </div>
           <div class="form-group">
-            <button v-on:click="clear" type="button" class="btn btn-sm btn-outline-secondary">清空</button>
-            <button v-on:click="submitpost" type="button" class="btn btn-sm btn-outline-secondary">新增</button>
+            <button @click="clear" type="button" class="btn btn-sm btn-outline-secondary" :disabled="newtitle.length==0 && newcontent.length==0">清空</button>
+            <button type="submit" class="btn btn-sm btn-outline-secondary">新增</button>
           </div>
         </form>
       </div>
@@ -80,19 +84,15 @@
     <div class="album py-4 bg-light">
       <div id="postarea" class="container">
         <div class="row">
-          <div class="col-md-4 postbox" 
-            v-for="(post, index) in posts"
-            v-show="posts.length>0"
-            v-bind:key="post.id"
-            v-bind:title="post.title">
-            <div class="card mb-4 box-shadow" >
+          <div class="col-md-4 postbox" v-for="(post, index) in posts" v-show="posts.length>0" v-bind:key="post.id" v-bind:title="post.title">
+            <div class="card mb-4 box-shadow">
               <!--<img class="card-img-top">-->
               <div class="card-body">
                 <h5 class="card-title">{{post.title}}</h5>
                 <p class="card-text">{{post.content}}</p>
                 <div class="d-flex justify-content-between align-items-center">
                   <div class="btn-group">
-                    <button v-on:click="managepostarr('delete',post)" type="button" class="btn btn-sm btn-outline-secondary">Delete</button>
+                    <button @click="managepostarr('delete',post)" type="button" class="btn btn-sm btn-outline-secondary">Delete</button>
                   </div>
                   <small class="text-muted">{{post.time}}</small>
                 </div>
@@ -117,7 +117,7 @@
   <!-- Bootstrap core JavaScript
     ================================================== -->
   <!-- Placed at the end of the document so the pages load faster -->
-  <script src="https://www.gstatic.com/firebasejs/4.12.0/firebase.js"></script>
+  <script src="Scripts/firebase.js"></script>
   <script src="Scripts/jquery-1.10.2.js"></script>
   <script src="Scripts/vue.js"></script>
   <script src="Scripts/bootstrap.js"></script>
@@ -140,7 +140,8 @@
       el: '#inputarea',
       data: {
         newtitle: '',
-        newcontent: ''
+        newcontent: '',
+        processingflag: false
       },
       methods: {
         //送出新留言
@@ -148,9 +149,11 @@
           var _this = this;
           _this.newtitle = _this.newtitle || '';
           _this.newcontent = _this.newcontent || '';
-          //標題、內容都填寫後才能新增
-          if (_this.newtitle.length == 0 || _this.newcontent.length == 0)
+          //標題、內容都填寫後、上次請求都執行完才能新增
+          if (_this.newtitle.length == 0 || _this.newcontent.length == 0 || _this.processing)
             return;
+          //紀錄執行中flag，避免重複執行
+          _this.processingflag = true;
           //取得目前新增貼文之亂數識別碼
           var randomtext = GetRandomtext();
           var addpostsref = database.ref('posts/' + randomtext);
@@ -159,8 +162,8 @@
               return {
                 title: _this.newtitle,
                 content: _this.newcontent,
-                //轉成格林威治時間(GMT)紀錄，避免留言時區依照時間排序問題 
-                time: new Date().toGMTString()
+                //轉成時戳紀錄，避免留言依照各地時間排序產生問題 
+                time: new Date().getTime()
               };
             }
             else {
@@ -187,6 +190,8 @@
               });
             }
             console.log("posted data: ", snapshot.val());
+            //不管失敗或成功，處理程序已執行完成，flag回復預設值
+            _this.processingflag = false;
           });
         },
         //清空標題與內容
@@ -233,11 +238,11 @@
               case 'delete':
                 if (extradata.id) {
                   var _this = this;
-                  postsdata.child(extradata.id).remove().then(function() {
-                    _this.posts = _this.posts.filter(function(el) {
-                        return el.id !== extradata.id;
+                  postsdata.child(extradata.id).remove().then(function () {
+                    _this.posts = _this.posts.filter(function (el) {
+                      return el.id !== extradata.id;
                     });
-                  }).catch(function(error) {
+                  }).catch(function (error) {
                     console.log("Remove failed: " + error.message)
                   });
                 }
@@ -251,16 +256,18 @@
     var postsdata = database.ref('posts');
     //依照留言時間做排序，default排序是asc方式
     postsdata.orderByChild('time').once("value", function (snapshot) {
+      var i = 0;
       snapshot.forEach(function (data) {
         //把每個留言都放到posts array的第一個位置，所以最早的貼文會被推到最後面
         postarea.managepostarr('unshift', {
           id: data.key,
           title: data.val().title,
           content: data.val().content,
-          //轉成格林威治時間(GMT)紀錄，避免留言時區依照時間排序問題 
+          //取得時戳後轉為當地時間
           time: new Date(data.val().time).toLocaleDateString()
         });
       });
+      console.log(postarea.posts);
     });
 
     //取得7位16位元亂數(每篇留言標題識別用，基本不太會重複XD)
