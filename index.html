@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="">
+  <link rel="icon" href="Images/icon.png">
+  <title>Vue & boostrap & Firebase Demo</title>
+  <!-- Bootstrap core CSS -->
+  <link href="Styles/bootstrap.css" rel="stylesheet">
+  <!-- Custom styles for this template -->
+  <link href="Styles/album.css" rel="stylesheet">
+</head>
+
+<body>
+  <header class="fixed-top">
+    <div class="collapse bg-dark " id="navbarHeader">
+      <div class="container">
+        <div class="row">
+          <div class="col-sm-8 col-md-7 py-4">
+            <h4 class="text-white">About</h4>
+            <p class="text-muted">用來練習Vue框架與Firebase的Demo小網站，排版也嘗試用boostrap範本修改後完成。本來想要加上圖片的，但是資料庫內儲存Base64字串過於龐大，又不想使用到Storage，因此作罷。</p>
+          </div>
+          <div class="col-sm-4 offset-md-1 py-4">
+            <h4 class="text-white">Contact</h4>
+            <ul class="list-unstyled">
+              <li>
+                <a href="https://github.com/GinaChang" target="_blank" class="text-white">Github</a>
+              </li>
+              <li>
+                <a href="mailto:him919raw854@gmail.com" class="text-white">Email me</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="navbar navbar-dark bg-dark box-shadow">
+      <div class="container d-flex justify-content-between">
+        <a href="#" class="navbar-brand d-flex align-items-center">
+          <strong>Demo</strong>
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarHeader" aria-controls="navbarHeader"
+          aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main role="main">
+
+    <section class="jumbotron">
+      <div class="container">
+        <div class="text-center">
+          <h1 class="jumbotron-heading">簡易留言Demo</h1>
+          <p class="lead text-muted text-left py-3">使用boostrap排版、Vue.js來控制元素的增減。資料庫使用Firebase Database，增刪留言時同步對Database寫入及刪除。</p>
+          <p class="lead text-muted text-left py-3">新個一個留言吧，他會立刻出現在下方哦 !</p>        
+        </div>
+        
+        <form id="inputarea" class="px-4 py-4 rounded bg-light border border-secondary">
+          <div class="form-group ">
+            <label class="text-left" for="comment">標題</label>
+            <input v-model="newtitle" type="text" class="form-control" placeholder="請輸入標題">
+          </div>
+          <div class="form-group">
+            <label class="text-left" for="comment">留言內容</label>
+            <textarea v-model="newcontent" class="form-control" rows="5" placeholder="請輸入留言內容"></textarea>
+          </div>
+          <div class="form-group">
+            <button v-on:click="clear" type="button" class="btn btn-sm btn-outline-secondary">清空</button>
+            <button v-on:click="submitpost" type="button" class="btn btn-sm btn-outline-secondary">新增</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <div class="album py-4 bg-light">
+      <div id="postarea" class="container">
+        <div class="row">
+          <div class="col-md-4 postbox" 
+            v-for="(post, index) in posts"
+            v-show="posts.length>0"
+            v-bind:key="post.id"
+            v-bind:title="post.title">
+            <div class="card mb-4 box-shadow" >
+              <!--<img class="card-img-top">-->
+              <div class="card-body">
+                <h5 class="card-title">{{post.title}}</h5>
+                <p class="card-text">{{post.content}}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="btn-group">
+                    <button v-on:click="managepostarr('delete',post)" type="button" class="btn btn-sm btn-outline-secondary">Delete</button>
+                  </div>
+                  <small class="text-muted">{{post.time}}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="text-muted">
+    <div class="container">
+      <p class="float-right">
+        <a href="#">Back to top</a>
+      </p>
+      <p>Demo Practice</p>
+    </div>
+  </footer>
+
+  <!-- Bootstrap core JavaScript
+    ================================================== -->
+  <!-- Placed at the end of the document so the pages load faster -->
+  <script src="https://www.gstatic.com/firebasejs/4.12.0/firebase.js"></script>
+  <script src="Scripts/jquery-1.10.2.js"></script>
+  <script src="Scripts/vue.js"></script>
+  <script src="Scripts/bootstrap.js"></script>
+  <script type="text/javascript">
+    // Set the configuration for your app
+    // TODO: Replace with your project's config object
+    var config = {
+      apiKey: "AIzaSyBghS0tSSHEMOq4BcHgCkib6ZI4C5UvK8k",
+      authDomain: "vuepractice-1a37e.firebaseapp.com",
+      databaseURL: "https://vuepractice-1a37e.firebaseio.com",
+      storageBucket: "vuepractice-1a37e.appspot.com"
+    };
+    firebase.initializeApp(config);
+
+    // Get a reference to the database service
+    var database = firebase.database();
+
+    //輸入新留言區塊
+    new Vue({
+      el: '#inputarea',
+      data: {
+        newtitle: '',
+        newcontent: ''
+      },
+      methods: {
+        //送出新留言
+        submitpost() {
+          var _this = this;
+          _this.newtitle = _this.newtitle || '';
+          _this.newcontent = _this.newcontent || '';
+          //標題、內容都填寫後才能新增
+          if (_this.newtitle.length == 0 || _this.newcontent.length == 0)
+            return;
+          //取得目前新增貼文之亂數識別碼
+          var randomtext = GetRandomtext();
+          var addpostsref = database.ref('posts/' + randomtext);
+          addpostsref.transaction(function (currentData) {
+            if (currentData === null) {
+              return {
+                title: _this.newtitle,
+                content: _this.newcontent,
+                //轉成格林威治時間(GMT)紀錄，避免留言時區依照時間排序問題 
+                time: new Date().toGMTString()
+              };
+            }
+            else {
+              console.log('posts is already exist.');
+              return; // Abort the transaction.
+            }
+          }, function (error, committed, snapshot) {
+            if (error) {
+              console.log('Transaction failed abnormally!', error);
+            }
+            else if (!committed) {
+              console.log('We aborted the transaction (because posts already exists).');
+            }
+            else {
+              console.log('post data added!');
+              //成功新增至資料庫，將畫面上的值清除
+              _this.clear();
+              //把目前的留言都放到posts array的第一個位置，最新的顯示在最前面
+              postarea.managepostarr('unshift', {
+                id: randomtext,
+                title: snapshot.val().title,
+                content: snapshot.val().content,
+                time: new Date(snapshot.val().time).toLocaleDateString()
+              });
+            }
+            console.log("posted data: ", snapshot.val());
+          });
+        },
+        //清空標題與內容
+        clear() {
+          this.newtitle = '';
+          this.newcontent = '';
+        }
+      }
+    });
+
+    //顯示留言Box區塊
+    var postarea = new Vue({
+      el: '#postarea',
+      data: {
+        posts: new Array()
+      },
+      methods: {
+        /* 為了之後統一管理posts array的增刪，先統一整理在這個方法內
+          mode: 'push','unshift','delete'*/
+        managepostarr(mode, extradata) {
+          if (mode && extradata) {
+            switch (mode) {
+              //加至array最前面
+              case 'unshift':
+                this.posts.unshift({
+                  id: extradata.id,
+                  title: extradata.title,
+                  content: extradata.content,
+                  time: new Date(extradata.time).toLocaleDateString()
+                });
+                break;
+
+              //加至array最後面
+              case 'push':
+                this.posts.push({
+                  id: extradata.id,
+                  title: extradata.title,
+                  content: extradata.content,
+                  time: new Date(extradata.time).toLocaleDateString()
+                });
+                break;
+
+              //從array中刪除所選留言
+              case 'delete':
+                if (extradata.id) {
+                  var _this = this;
+                  postsdata.child(extradata.id).remove().then(function() {
+                    _this.posts = _this.posts.filter(function(el) {
+                        return el.id !== extradata.id;
+                    });
+                  }).catch(function(error) {
+                    console.log("Remove failed: " + error.message)
+                  });
+                }
+                break;
+            }
+          }
+        }
+      }
+    });
+
+    var postsdata = database.ref('posts');
+    //依照留言時間做排序，default排序是asc方式
+    postsdata.orderByChild('time').once("value", function (snapshot) {
+      snapshot.forEach(function (data) {
+        //把每個留言都放到posts array的第一個位置，所以最早的貼文會被推到最後面
+        postarea.managepostarr('unshift', {
+          id: data.key,
+          title: data.val().title,
+          content: data.val().content,
+          //轉成格林威治時間(GMT)紀錄，避免留言時區依照時間排序問題 
+          time: new Date(data.val().time).toLocaleDateString()
+        });
+      });
+    });
+
+    //取得7位16位元亂數(每篇留言標題識別用，基本不太會重複XD)
+    function GetRandomtext() {
+      return Math.floor((1 + Math.random()) * 0x1000000).toString(16);
+    }
+  </script>
+</body>
+
+</html>
