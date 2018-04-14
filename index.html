@@ -256,7 +256,6 @@
     var postsdata = database.ref('posts');
     //依照留言時間做排序，default排序是asc方式
     postsdata.orderByChild('time').once("value", function (snapshot) {
-      var i = 0;
       snapshot.forEach(function (data) {
         //把每個留言都放到posts array的第一個位置，所以最早的貼文會被推到最後面
         postarea.managepostarr('unshift', {
@@ -267,7 +266,6 @@
           time: new Date(data.val().time).toLocaleDateString()
         });
       });
-      console.log(postarea.posts);
     });
 
     //取得7位16位元亂數(每篇留言標題識別用，基本不太會重複XD)
